@@ -1,88 +1,102 @@
 document.addEventListener("DOMContentLoaded", () => {
-
-  const board = document.querySelector(".board"); // main game container
-  const highScoreEl = document.querySelector("#score"); // high score text
-  const infoEls = document.querySelectorAll("#time"); // score + time spans
+  const board = document.querySelector(".board");
+  const highScoreEl = document.querySelector("#score");
+  const infoEls = document.querySelectorAll("#time");
 
   function blockSize() {
-    if (window.innerWidth < 480) return 28; // phone size
-    if (window.innerWidth < 768) return 36; // tablet size
-    return 50; // desktop size
+    if (window.innerWidth < 480) return 28;
+    if (window.innerWidth < 768) return 36;
+    return 50;
   }
 
-  let SIZE = blockSize(); // cell size based on screen
-  let speed = window.innerWidth < 480 ? 110 : 90; // slower on phone
-  let level = 1; // difficulty level
-  let obstacleTick = 0; // controls obstacle movement rate
+  let SIZE = blockSize();
+  let speed = window.innerWidth < 480 ? 110 : 90;
+  let level = 1;
+  let obstacleTick = 0;
 
-  let rows, cols, cells = {}; // grid dimensions and lookup table
+  let rows,
+    cols,
+    cells = {};
 
-  let snake, direction, score, seconds; // game state
-  let food, specialFood, obstacles; // items on board
-  let isPaused = false; // pause flag
-  let loop, timer; // intervals
+  let snake, direction, score, seconds;
+  let food, specialFood, obstacles;
 
-  let highScore = localStorage.getItem("highScore") || 0; // saved best
-  highScoreEl.textContent = highScore; // show best score
+  /* 🆕 NEW STATE */
+  let boss = null;
+  let shield = false;
+  let ghost = false;
+  let magnet = false;
+
+  let isPaused = false;
+  let loop, timer;
+
+  let highScore = localStorage.getItem("highScore") || 0;
+  highScoreEl.textContent = highScore;
+
+  function rand(n) {
+    return Math.floor(Math.random() * n);
+  }
 
   function init() {
-    board.innerHTML = ""; // clear board
-    cells = {}; // reset cell map
+    board.innerHTML = "";
+    cells = {};
 
-    SIZE = blockSize(); // recalc size on resize
-    rows = Math.floor(board.clientHeight / SIZE); // how many rows fit
-    cols = Math.floor(board.clientWidth / SIZE); // how many cols fit
+    SIZE = blockSize();
+    rows = Math.floor(board.clientHeight / SIZE);
+    cols = Math.floor(board.clientWidth / SIZE);
 
-    board.style.gridTemplateColumns = `repeat(${cols}, 1fr)`; // dynamic grid
-    board.style.gridTemplateRows = `repeat(${rows}, 1fr)`; // dynamic grid
+    board.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    board.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
 
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        const cell = document.createElement("div"); // one grid block
-        cell.className = "block"; // base style
-        board.appendChild(cell); // add to board
-        cells[`${r}-${c}`] = cell; // store reference by position
+        const cell = document.createElement("div");
+        cell.className = "block";
+        board.appendChild(cell);
+        cells[`${r}-${c}`] = cell;
       }
     }
 
     snake = [
       { r: 5, c: 5 },
       { r: 5, c: 6 },
-      { r: 5, c: 7 }
-    ]; // initial snake body
+      { r: 5, c: 7 },
+    ];
 
-    direction = "RIGHT"; // default direction
-    score = 0; // reset score
-    seconds = 0; // reset timer
-    food = createFood(); // spawn food
-    specialFood = null; // no special food initially
-    obstacles = []; // reset obstacles
-    level = 1; // reset level
-    obstacleTick = 0; // reset obstacle timer
+    direction = "RIGHT";
+    score = 0;
+    seconds = 0;
+    level = 1;
+    obstacleTick = 0;
 
-    infoEls[0].textContent = score; // show score
-    infoEls[1].textContent = "00:00"; // show time
+    shield = false;
+    ghost = false;
+    magnet = false;
+    boss = null;
 
-    createObstacles(); // spawn obstacles
-    render(); // draw everything
+    food = createFood();
+    specialFood = null;
+    obstacles = [];
 
-    clearInterval(loop); // stop old loop
-    clearInterval(timer); // stop old timer
+    infoEls[0].textContent = score;
+    infoEls[1].textContent = "00:00";
 
-    loop = setInterval(moveSnake, speed); // main game loop
-    timer = setInterval(updateTimer, 1000); // time counter
+    createObstacles();
+    render();
+
+    clearInterval(loop);
+    clearInterval(timer);
+
+    loop = setInterval(moveSnake, speed);
+    timer = setInterval(updateTimer, 1000);
   }
 
   function updateTimer() {
-    if (isPaused) return; // freeze timer when paused
-    seconds++; // add second
-    const m = String(Math.floor(seconds / 60)).padStart(2, "0"); // minutes
-    const s = String(seconds % 60).padStart(2, "0"); // seconds
-    infoEls[1].textContent = `${m}:${s}`; // update UI
-  }
-
-  function rand(n) {
-    return Math.floor(Math.random() * n); // random number helper
+    if (isPaused) return;
+    seconds++;
+    const m = String(Math.floor(seconds / 60)).padStart(2, "0");
+    const s = String(seconds % 60).padStart(2, "0");
+    infoEls[1].textContent = `${m}:${s}`;
   }
 
   function createFood(type = "normal") {
@@ -92,74 +106,95 @@ document.addEventListener("DOMContentLoaded", () => {
       slow: "orange",
       double: "magenta",
       poison: "purple",
-      golden: "gold"
-    }; // color by food type
+      golden: "gold",
+      shield: "lime",
+      ghost: "white",
+      magnet: "blue",
+    };
 
     return {
-      r: rand(rows), // random row
-      c: rand(cols), // random col
-      type, // effect type
-      color: colors[type] // visual color
+      r: rand(rows),
+      c: rand(cols),
+      type,
+      color: colors[type],
     };
   }
 
   function createObstacles() {
-    obstacles = []; // reset obstacles
+    obstacles = [];
     for (let i = 0; i < level + 2; i++) {
-      obstacles.push({ r: rand(rows), c: rand(cols) }); // random blocks
+      obstacles.push({ r: rand(rows), c: rand(cols) });
     }
   }
 
   function moveObstacles() {
-    obstacles.forEach(o => {
-      if (Math.random() < 0.4) { // move rarely, not every frame
+    obstacles.forEach((o) => {
+      if (Math.random() < 0.4) {
         o.r = rand(rows);
         o.c = rand(cols);
       }
     });
   }
 
+  /* 🆕 BOSS LOGIC */
+  function spawnBoss() {
+    boss = { r: rand(rows), c: rand(cols) };
+  }
+
+  function moveBoss() {
+    if (!boss) return;
+    const head = snake[snake.length - 1];
+    boss.r += Math.sign(head.r - boss.r);
+    boss.c += Math.sign(head.c - boss.c);
+  }
+
   function clearBoard() {
-    Object.values(cells).forEach(c => {
-      c.className = "block"; // reset classes
-      c.style.backgroundColor = ""; // reset color
+    Object.values(cells).forEach((c) => {
+      c.className = "block";
+      c.style.backgroundColor = "";
     });
   }
 
   function paintFood(f) {
-    const cell = cells[`${f.r}-${f.c}`]; // locate cell
-    if (cell) cell.style.backgroundColor = f.color; // paint food
+    const cell = cells[`${f.r}-${f.c}`];
+    if (cell) cell.style.backgroundColor = f.color;
   }
 
   function render() {
-    clearBoard(); // wipe previous frame
+    clearBoard();
 
     snake.forEach((s, i) => {
       const cell = cells[`${s.r}-${s.c}`];
-      if (!cell) return; // safety check
-      cell.classList.add("fill"); // snake body
+      if (!cell) return;
+      cell.classList.add("fill");
       if (i === snake.length - 1) {
-        cell.style.backgroundColor = "#eee"; // head highlight
+        cell.style.backgroundColor = "#eee";
       }
     });
 
-    paintFood(food); // draw normal food
-    if (specialFood) paintFood(specialFood); // draw special food
+    paintFood(food);
+    if (specialFood) paintFood(specialFood);
 
-    obstacles.forEach(o => {
+    obstacles.forEach((o) => {
       const cell = cells[`${o.r}-${o.c}`];
-      if (cell) cell.style.backgroundColor = "#444"; // obstacle block
+      if (cell) cell.style.backgroundColor = "#444";
     });
+
+    if (boss) {
+      const cell = cells[`${boss.r}-${boss.c}`];
+      if (cell) cell.style.backgroundColor = "crimson";
+    }
   }
 
   function moveSnake() {
-    if (isPaused) return; // stop movement when paused
+    if (isPaused) return;
 
-    obstacleTick++; // count frames
-    if (obstacleTick % 8 === 0) moveObstacles(); // slow obstacle move
+    obstacleTick++;
+    if (obstacleTick % 8 === 0) moveObstacles();
+    if (boss && obstacleTick % 5 === 0) moveBoss();
 
-    const head = snake[snake.length - 1]; // current head
-    const newHead = { ...head }; // copy head
+    const head = snake[snake.length - 1];
+    const newHead = { ...head };
 
     if (direction === "UP") newHead.r--;
     if (direction === "DOWN") newHead.r++;
@@ -167,23 +202,30 @@ document.addEventListener("DOMContentLoaded", () => {
     if (direction === "RIGHT") newHead.c++;
 
     if (
-      newHead.r < 0 || newHead.c < 0 ||
-      newHead.r >= rows || newHead.c >= cols
-    ) return gameOver(); // wall hit
+      newHead.r < 0 ||
+      newHead.c < 0 ||
+      newHead.r >= rows ||
+      newHead.c >= cols
+    ) {
+      if (shield) shield = false;
+      else return gameOver();
+    }
 
-    if (snake.some(s => s.r === newHead.r && s.c === newHead.c))
-      return gameOver(); // self hit
+    if (!ghost && snake.some((s) => s.r === newHead.r && s.c === newHead.c))
+      return gameOver();
 
-    if (obstacles.some(o => o.r === newHead.r && o.c === newHead.c))
-      return gameOver(); // obstacle hit
+    if (!ghost && obstacles.some((o) => o.r === newHead.r && o.c === newHead.c))
+      return gameOver();
 
-    snake.push(newHead); // move head forward
+    if (boss && boss.r === newHead.r && boss.c === newHead.c) return gameOver();
 
-    let ate = false; // track food eating
+    snake.push(newHead);
+
+    let ate = false;
 
     if (newHead.r === food.r && newHead.c === food.c) {
-      applyEffect(food.type); // apply food effect
-      food = createFood(); // spawn new food
+      applyEffect(food.type);
+      food = createFood();
       ate = true;
     }
 
@@ -192,109 +234,75 @@ document.addEventListener("DOMContentLoaded", () => {
       newHead.r === specialFood.r &&
       newHead.c === specialFood.c
     ) {
-      applyEffect(specialFood.type); // apply special effect
-      specialFood = null; // remove special food
+      applyEffect(specialFood.type);
+      specialFood = null;
       ate = true;
     }
 
-    if (!ate) snake.shift(); // remove tail if no food eaten
-    render(); // redraw board
+    if (!ate) snake.shift();
+    render();
   }
 
   function applyEffect(type) {
-    let points = 1; // base score
+    let points = 1;
 
-    if (type === "double") points = 2; // bonus points
+    if (type === "double") points = 2;
     if (type === "poison") {
-      snake.splice(0, 2); // shorten snake
+      snake.splice(0, 2);
       points = -1;
     }
-    if (type === "golden") points = 5; // big reward
+    if (type === "golden") points = 5;
 
-    score += points; // update score
-    if (score < 0) score = 0; // clamp
-    infoEls[0].textContent = score; // update UI
+    if (type === "shield") shield = true;
+    if (type === "ghost") ghost = true;
+    if (type === "magnet") magnet = true;
 
-    if (type === "speed" && speed > 60) updateSpeed(-10); // faster
-    if (type === "slow" && speed < 200) updateSpeed(20); // slower
+    score = Math.max(0, score + points);
+    infoEls[0].textContent = score;
 
     if (score % 6 === 0) {
-      level++; // increase difficulty
-      createObstacles(); // add obstacles
-      shake(); // visual feedback
+      level++;
+      createObstacles();
+      if (level === 5) spawnBoss();
+      shake();
     }
 
-    if (!specialFood && Math.random() < 0.25) {
-      specialFood = createFood("golden"); // rare bonus food
+    if (!specialFood && Math.random() < 0.3) {
+      const powers = ["shield", "ghost", "magnet"];
+      specialFood = createFood(powers[rand(powers.length)]);
     }
   }
 
-  function updateSpeed(d) {
-    speed += d; // change speed
-    clearInterval(loop); // reset loop
-    loop = setInterval(moveSnake, speed); // apply new speed
+  function shake() {
+    board.style.transform = "translateX(4px)";
+    setTimeout(() => (board.style.transform = ""), 120);
   }
 
-  document.addEventListener("keydown", e => {
+  function gameOver() {
+    clearInterval(loop);
+    clearInterval(timer);
+
+    if (score > highScore) {
+      localStorage.setItem("highScore", score);
+      highScoreEl.textContent = score;
+    }
+
+    alert("Game Over");
+    init();
+  }
+
+  document.addEventListener("keydown", (e) => {
     if (e.code === "Space") {
-      isPaused = !isPaused; // toggle pause
+      isPaused = !isPaused;
       return;
     }
-
-    if (isPaused) return; // block movement when paused
-
+    if (isPaused) return;
     if (e.key === "ArrowUp" && direction !== "DOWN") direction = "UP";
     if (e.key === "ArrowDown" && direction !== "UP") direction = "DOWN";
     if (e.key === "ArrowLeft" && direction !== "RIGHT") direction = "LEFT";
     if (e.key === "ArrowRight" && direction !== "LEFT") direction = "RIGHT";
   });
 
-  let startX = 0, startY = 0; // touch start coords
-
-  board.addEventListener("touchstart", e => {
-    const t = e.touches[0];
-    startX = t.clientX; // record start X
-    startY = t.clientY; // record start Y
-  });
-
-  board.addEventListener("touchend", e => {
-    const t = e.changedTouches[0];
-    const dx = t.clientX - startX; // horizontal swipe
-    const dy = t.clientY - startY; // vertical swipe
-
-    if (Math.abs(dx) > Math.abs(dy)) {
-      if (dx > 0 && direction !== "LEFT") direction = "RIGHT";
-      else if (dx < 0 && direction !== "RIGHT") direction = "LEFT";
-    } else {
-      if (dy > 0 && direction !== "UP") direction = "DOWN";
-      else if (dy < 0 && direction !== "DOWN") direction = "UP";
-    }
-  });
-
-  function shake() {
-    board.style.transform = "translateX(4px)"; // quick shake
-    setTimeout(() => board.style.transform = "", 120);
-  }
-
-  function gameOver() {
-    clearInterval(loop); // stop movement
-    clearInterval(timer); // stop timer
-
-    if (score > highScore) {
-      localStorage.setItem("highScore", score); // save best
-      highScoreEl.textContent = score;
-    }
-
-    alert("Game Over"); // notify player
-    init(); // restart game
-  }
-
-  window.addEventListener("resize", () => {
-    clearInterval(loop);
-    clearInterval(timer);
-    init(); // rebuild grid on resize
-  });
-
-  init(); // start game
-
+  window.addEventListener("resize", init);
+  init();
 });
