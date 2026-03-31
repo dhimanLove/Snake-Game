@@ -13,19 +13,16 @@ body {
     color: var(--text-color);
 }
 
-:root {  
+:root {
 
-/* We use variables because , if we want to change the color scheme of the entire project, we just have to change it here. */
-
-    /*background colors*/
+    /* background colors */
     --primary-color: #0b0b0b;
     --bg-fill-color: #fdfdfd;
 
-
-    /*text colors*/
+    /* text colors */
     --text-color: antiquewhite;
 
-    /* Spacing variables*/
+    /* spacing */
     --spacing-xs: 4px;
     --spacing-sm: 8px;
     --spacing-md: 16px;
@@ -34,10 +31,10 @@ body {
     --spacing-xxl: 40px;
     --spacing-xxxl: 48px;
 
-    /* border color */
+    /* borders */
     --border-primay-color: #333;
 
-    /* border radiuses */
+    /* radii */
     --border-radius-xs: 4px;
     --border-radius-sm: 8px;
     --border-radius-md: 12px;
@@ -46,36 +43,30 @@ body {
     --border-radius-xxl: 24px;
 }
 
-main,section
-{
+main, section {
     width: 100%;
     height: 100%;
-
 }
 
-section
-{
+section {
     padding: var(--spacing-xxl);
     display: flex;
-     flex-direction: column;  
-     /*Info top pe nd board niche */
+    flex-direction: column;
 }
-section .infos
-{
+
+section .infos {
     width: 100%;
     display: flex;
     justify-content: space-between;
 }
 
-.info
-{
-    padding: var(--spacing-sm)  var(--spacing-md);
+.info {
+    padding: var(--spacing-sm) var(--spacing-md);
     border: 1px solid var(--border-primay-color);
     border-radius: var(--border-radius-md);
 }
 
-.board
-{
+.board {
     flex-grow: 1;
     margin-top: var(--spacing-xxl);
     border: 1px solid var(--border-primay-color);
@@ -84,19 +75,290 @@ section .infos
     grid-template-rows: repeat(auto-fill, minmax(50px, 1.1fr));
 }
 
-.block
-{
-    /* width: 30px;
-    height: 30px; */
+.block {
     border: 1px solid var(--border-primay-color);
 }
 
-.fill
-{
+.fill {
     background-color: var(--bg-fill-color);
 }
 
 .food {
     background-color: red;
     box-shadow: 0 0 8px red;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   OVERLAYS — menu + game over
+   These are position:fixed layers that sit above the game.
+   Nothing below this line touches the board, snake, or info bar.
+═══════════════════════════════════════════════════════ */
+
+/* shared backdrop */
+#menu-overlay,
+#gameover-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.88);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    /* hidden state — JS toggles this to flex */
+}
+
+#gameover-overlay {
+    display: none;
+}
+
+/* shared card shell — same surface as the game's .info boxes */
+.overlay-card {
+    background: #111;
+    border: 1px solid var(--border-primay-color);
+    border-radius: var(--border-radius-xl);
+    padding: var(--spacing-xxl) var(--spacing-xxl) var(--spacing-xl);
+    width: 100%;
+    max-width: 340px;
+    text-align: center;
+    color: var(--text-color);
+}
+
+/* ── Menu typography ── */
+.ov-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #444;
+    margin-bottom: var(--spacing-xs);
+}
+
+.ov-title {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    color: var(--text-color);
+    margin-bottom: var(--spacing-xxl);
+}
+
+/* ── Option blocks (difficulty, hurdles) ── */
+.ov-block {
+    margin-bottom: var(--spacing-xl);
+    text-align: left;
+}
+
+.ov-block-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #444;
+    margin-bottom: var(--spacing-sm);
+}
+
+.ov-toggles {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+/* each toggle pill matches the game's .info border language */
+.ov-toggle {
+    flex: 1;
+    padding: var(--spacing-sm) var(--spacing-xs);
+    background: transparent;
+    border: 1px solid var(--border-primay-color);
+    border-radius: var(--border-radius-sm);
+    color: #555;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.ov-toggle:hover {
+    border-color: #555;
+    color: #888;
+}
+
+/* active state: same antiquewhite the game uses everywhere */
+.ov-toggle.active {
+    border-color: var(--text-color);
+    color: var(--text-color);
+}
+
+/* ── Shared buttons ── */
+.ov-btn-primary {
+    width: 100%;
+    padding: 11px var(--spacing-md);
+    border-radius: var(--border-radius-sm);
+    background: var(--bg-fill-color);   /* same white the snake body uses */
+    color: #111;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    border: none;
+    cursor: pointer;
+    margin-bottom: var(--spacing-sm);
+    font-family: inherit;
+    transition: opacity 0.15s;
+}
+
+.ov-btn-primary:hover  { opacity: 0.85; }
+.ov-btn-primary:active { opacity: 0.7; transform: scale(0.99); }
+
+.ov-btn-ghost {
+    width: 100%;
+    padding: 11px var(--spacing-md);
+    border-radius: var(--border-radius-sm);
+    background: transparent;
+    color: #555;
+    font-size: 13px;
+    font-family: inherit;
+    border: 1px solid var(--border-primay-color);
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.ov-btn-ghost:hover  { border-color: #555; color: #888; }
+.ov-btn-ghost:active { transform: scale(0.99); }
+
+/* ── Rulebook (collapsed by default, expanded by JS) ── */
+.rulebook {
+    display: none;   /* toggled by JS */
+    text-align: left;
+    margin-top: var(--spacing-lg);
+    border-top: 1px solid var(--border-primay-color);
+    padding-top: var(--spacing-lg);
+}
+
+.rulebook.open {
+    display: block;
+}
+
+.rule-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+/* keyboard key badge */
+.rule-key {
+    flex-shrink: 0;
+    width: 72px;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--text-color);
+    background: #1a1a1a;
+    border: 1px solid var(--border-primay-color);
+    border-radius: var(--border-radius-xs);
+    padding: 3px 6px;
+    text-align: center;
+}
+
+.rule-pip {
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    margin-left: 4px;
+    margin-right: 24px; 
+}
+
+.rule-desc {
+    font-size: 12px;
+    color: #555;
+    line-height: 1.4;
+}
+
+.rule-divider {
+    border: none;
+    border-top: 1px solid #1e1e1e;
+    margin: var(--spacing-sm) 0 var(--spacing-md);
+}
+
+.rule-note {
+    font-size: 11px;
+    color: #3a3a3a;
+    line-height: 1.6;
+    margin-top: var(--spacing-sm);
+}
+
+/* ── Game Over specific elements ── */
+
+/* icon ring */
+.go-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1px solid #3d1f1f;
+    background: #1a0f0f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto var(--spacing-lg);
+}
+
+.go-headline {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-color);
+    margin: 0 0 var(--spacing-xs);
+    opacity: 0.9;
+}
+
+/* death reason — this is the key new element */
+.go-reason {
+    font-size: 13px;
+    color: #555;
+    margin: 0 0 var(--spacing-xl);
+    line-height: 1.5;
+}
+
+.go-scores {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+.go-score-card {
+    background: #0d0d0d;
+    border: 1px solid var(--border-primay-color);
+    border-radius: var(--border-radius-md);
+    padding: var(--spacing-md) var(--spacing-sm);
+}
+
+.go-score-label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #4a4a4a;
+    margin-bottom: 6px;
+}
+
+.go-score-value {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text-color);
+    letter-spacing: -0.5px;
+}
+
+.go-best-badge {
+    display: none;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #5a7a4a;
+    border: 1px solid #2a3a1f;
+    border-radius: var(--border-radius-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    margin-bottom: var(--spacing-lg);
+}
+
+.go-divider {
+    border: none;
+    border-top: 1px solid var(--border-primay-color);
+    margin: 0 0 var(--spacing-lg);
 }
